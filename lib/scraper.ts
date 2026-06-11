@@ -7,9 +7,11 @@ export interface ScrapedPage {
   h1: string[]
   h2: string[]
   h3: string[]
+  links: { href: string; text: string; internal: boolean }[]
+  images: { src: string; alt: string; hasAlt: boolean }[]
   wordCount: number
-  loadTime: number
   statusCode: number
+  loadTime: number
   canonical: string
   robots: string
   ogTitle: string
@@ -18,17 +20,18 @@ export interface ScrapedPage {
   schemaTypes: string[]
   internalLinks: number
   externalLinks: number
-  links: string[]
-  images: { src: string; hasAlt: boolean }[]
+  brokenLinks: string[]
   rawHtml: string
 }
 
 export async function scrapePage(url: string): Promise<ScrapedPage> {
+  const normalized = url.startsWith('http') ? url : `https://${url}`
   const start = Date.now()
 
-  const res = await fetch(url, {
+  const res = await fetch(normalized, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      'User-Agent': 'Mozilla/5.0 (compatible; Traxivo/1.0; +https://traxivo.com)',
+      'Accept': 'text/html,application/xhtml+xml',
     },
     signal: AbortSignal.timeout(15000),
   })
@@ -36,59 +39,77 @@ export async function scrapePage(url: string): Promise<ScrapedPage> {
   const loadTime = Date.now() - start
   const html = await res.text()
   const $ = cheerio.load(html)
+  const base = new URL(normalized)
 
-  const domain = new URL(url).hostname
+  // Remove scripts/styles for text
+  $('script, style, noscript').remove()
 
-  const links: string[] = []
-  let internalLinks = 0
-  let externalLinks = 0
-
+  // Links
+  const links: ScrapedPage['links'] = []
   $('a[href]').each((_, el) => {
     const href = $(el).attr('href') || ''
-    links.push(href)
-    if (href.includes(domain)) internalLinks++
-    else if (href.startsWith('http')) externalLinks++
+    const text = $(el).text().trim().slice(0, 100)
+    if (!href || href.startsWith('#') || href.startsWith('mailto:')) return
+    try {
+      const abs = new URL(href, normalized).href
+      links.push({
+        href: abs,
+        text,
+        internal: new URL(abs).hostname === base.hostname,
+      })
+    } catch {}
   })
 
-  const images: { src: string; hasAlt: boolean }[] = []
+  // Images
+  const images: ScrapedPage['images'] = []
   $('img').each((_, el) => {
-    images.push({
-      src: $(el).attr('src') || '',
-      hasAlt: !!($(el).attr('alt') || '').trim(),
-    })
+    const src = $(el).attr('src') || ''
+    const alt = $(el).attr('alt') || ''
+    images.push({ src, alt, hasAlt: alt.length > 0 })
   })
 
+  // Schema types
   const schemaTypes: string[] = []
   $('script[type="application/ld+json"]').each((_, el) => {
     try {
       const json = JSON.parse($(el).html() || '{}')
-      if (json['@type']) schemaTypes.push(json['@type'])
+      const type = json['@type'] || (Array.isArray(json) && json[0]?.['@type'])
+      if (type) schemaTypes.push(Array.isArray(type) ? type.join(', ') : type)
     } catch {}
   })
 
-  const text = $('body').text().replace(/\s+/g, ' ').trim()
-  const wordCount = text.split(' ').filter(Boolean).length
+  const bodyText = $('body').text().replace(/\s+/g, ' ').trim()
+  const internal = links.filter(l => l.internal).length
+  const external = links.filter(l => !l.internal).length
 
   return {
-    url,
+    url: normalized,
     title: $('title').text().trim(),
     description: $('meta[name="description"]').attr('content') || '',
     h1: $('h1').map((_, el) => $(el).text().trim()).get(),
     h2: $('h2').map((_, el) => $(el).text().trim()).get(),
     h3: $('h3').map((_, el) => $(el).text().trim()).get(),
-    wordCount,
-    loadTime,
+    links,
+    images,
+    wordCount: bodyText.split(/\s+/).filter(Boolean).length,
     statusCode: res.status,
+    loadTime,
     canonical: $('link[rel="canonical"]').attr('href') || '',
     robots: $('meta[name="robots"]').attr('content') || '',
     ogTitle: $('meta[property="og:title"]').attr('content') || '',
     ogDesc: $('meta[property="og:description"]').attr('content') || '',
     ogImage: $('meta[property="og:image"]').attr('content') || '',
     schemaTypes,
-    internalLinks,
-    externalLinks,
-    links,
-    images,
-    rawHtml: html,
+    internalLinks: internal,
+    externalLinks: external,
+    brokenLinks: [],
+    rawHtml: html.slice(0, 5000),
   }
-    }
+}
+
+export async function scrapeMultiple(urls: string[]): Promise<ScrapedPage[]> {
+  const results = await Promise.allSettled(urls.map(scrapePage))
+  return results
+    .filter((r): r is PromiseFulfilledResult<ScrapedPage> => r.status === 'fulfilled')
+    .map(r => r.value)
+        }
