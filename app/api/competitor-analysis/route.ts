@@ -22,8 +22,8 @@ export async function POST(req: NextRequest) {
       avgDA: Math.round(results.reduce((s, r) => s + r.domainAuthority, 0) / results.length),
       avgSpeed: Math.round(results.reduce((s, r) => s + r.pageSpeed, 0) / results.length),
       avgContent: Math.round(results.reduce((s, r) => s + r.contentLength, 0) / results.length),
-      topTechnologies: [...new Set(results.flatMap(r => r.technologies))].slice(0, 10),
-      allKeywords: [...new Set(results.flatMap(r => r.keywords))].slice(0, 20),
+      topTechnologies: Array.from(new Set(results.flatMap(r => r.technologies))).slice(0, 10),
+      allKeywords: Array.from(new Set(results.flatMap(r => r.keywords))).slice(0, 20),
     }
 
     // AI competitive intelligence
@@ -67,4 +67,5 @@ Be specific and data-driven.
       { status: 500 }
     )
   }
-                              }
+                                          }
+      
