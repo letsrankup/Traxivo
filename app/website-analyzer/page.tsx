@@ -17,7 +17,7 @@ export default function WebsiteAnalyzerPage() {
       setCompetitors(data)
     } catch (err) {
       console.error(err)
-    } finaly {
+    } finally {
       setLoading(false)
     }
   }
@@ -89,5 +89,5 @@ export default function WebsiteAnalyzerPage() {
       )}
     </div>
   )
-      }
-              
+            }
+          
