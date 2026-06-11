@@ -84,4 +84,5 @@ export default function Pipeline({ contacts, onMoveStage }: PipelineProps) {
       })}
     </div>
   )
-                                                                                                 }
+                              
+}
