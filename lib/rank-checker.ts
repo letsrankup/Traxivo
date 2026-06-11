@@ -28,4 +28,10 @@ export async function checkRank(keyword: string, domain: string): Promise<Keywor
   } catch {
     return { keyword, position: null, url: '', change: 0 }
   }
-            }
+}
+
+// Ye function 'checkKeywordRankings is not exported' wale masle ko hal karne ke liye add kiya hai
+export async function checkKeywordRankings(keywords: string[], domain: string): Promise<KeywordRank[]> {
+  const results = await Promise.all(keywords.map(keyword => checkRank(keyword, domain)))
+  return results
+}
