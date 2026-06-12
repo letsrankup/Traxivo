@@ -9,110 +9,114 @@
   padding: 0;
 }
 
+/* 💎 Premium Light Sky-Blue Global Token System */
 :root {
-  --bg-primary: #020617;
-  --bg-secondary: #0f172a;
-  --bg-card: rgba(15, 23, 42, 0.8);
-  --border-glass: rgba(255, 255, 255, 0.08);
-  --brand: #6366f1;
-  --brand-light: #818cf8;
+  --bg-primary: #f8fafc;        /* Soft Slate Slate Light */
+  --bg-secondary: #f1f5f9;      /* Pure Sidebar Light */
+  --bg-card: #ffffff;           /* Clean White Cards */
+  --border-glass: #e2e8f0;       /* Crisp Border Lines */
+  --brand: #0284c7;             /* Professional Sky Blue */
+  --brand-light: #38bdf8;       /* Accent Light Sky */
 }
 
 html, body {
   background: var(--bg-primary);
-  color: #f1f5f9;
+  color: #0f172a;               /* Dark Slate text for super readability */
   font-family: 'Inter', system-ui, sans-serif;
   overflow-x: hidden;
+  min-height: 100vh;
 }
 
-/* Scrollbar */
+/* Elegant Soft Corporate Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0f172a; }
-::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: #818cf8; }
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #0284c7; }
 
-/* Glass Card */
+/* 💎 Premium Light Glass Panels (Replacing Heavy Dark Filters) */
 .glass {
-  background: rgba(15, 23, 42, 0.7);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
 .glass-hover {
-  transition: all 0.3s ease;
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .glass-hover:hover {
-  background: rgba(99, 102, 241, 0.1);
-  border-color: rgba(99, 102, 241, 0.3);
-  box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+  background: #ffffff;
+  border-color: #38bdf8;
+  box-shadow: 0 10px 25px -5px rgba(2, 132, 199, 0.08);
   transform: translateY(-2px);
 }
 
-/* Gradient Text */
+/* Sky-Indigo Premium Gradient Text */
 .gradient-text {
-  background: linear-gradient(135deg, #6366f1, #a78bfa, #06b6d4);
+  background: linear-gradient(135deg, #0284c7, #4f46e5, #0d9488);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
 
-/* Animated Background */
+/* Soft Corporate Subtle Radial Gradient */
 .animated-bg {
-  background: radial-gradient(ellipse at top left, rgba(99,102,241,0.15) 0%, transparent 50%),
-              radial-gradient(ellipse at bottom right, rgba(139,92,246,0.1) 0%, transparent 50%),
-              #020617;
+  background: radial-gradient(ellipse at top left, rgba(56,189,248,0.12) 0%, transparent 55%),
+              radial-gradient(ellipse at bottom right, rgba(79,70,229,0.05) 0%, transparent 50%),
+              #f8fafc;
 }
 
-/* Glow Effects */
+/* Glow Effects calibrated for Clean UI */
 .glow-brand {
-  box-shadow: 0 0 30px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 20px rgba(2, 132, 199, 0.15);
 }
 .glow-text {
-  text-shadow: 0 0 20px rgba(99, 102, 241, 0.5);
+  text-shadow: 0 2px 10px rgba(2, 132, 199, 0.1);
 }
 
-/* Status Dots */
-.dot-green { background: #10b981; box-shadow: 0 0 8px #10b981; }
-.dot-yellow { background: #f59e0b; box-shadow: 0 0 8px #f59e0b; }
-.dot-red { background: #ef4444; box-shadow: 0 0 8px #ef4444; }
-.dot-blue { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+/* Standardized Status Indicators */
+.dot-green { background: #10b981; box-shadow: 0 0 8px rgba(16, 185, 129, 0.5); }
+.dot-yellow { background: #f59e0b; box-shadow: 0 0 8px rgba(245, 158, 11, 0.5); }
+.dot-red { background: #ef4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.5); }
+.dot-blue { background: #0284c7; box-shadow: 0 0 8px rgba(2, 132, 199, 0.5); }
 
-/* Loading Shimmer */
+/* Premium Shimmer for Light Theme Loaders */
 @keyframes shimmer {
   0% { background-position: -200% 0; }
   100% { background-position: 200% 0; }
 }
 .shimmer {
-  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+  background: linear-gradient(90deg, rgba(241,245,249,0.6) 25%, rgba(226,232,240,0.9) 50%, rgba(241,245,249,0.6) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
-/* Sidebar Active */
+/* Sidebar Active Tab State for Corporate look */
 .nav-active {
-  background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.1));
-  border-left: 3px solid #6366f1;
-  color: #a5b4fc;
+  background: linear-gradient(135deg, rgba(2,132,199,0.08), rgba(79,70,229,0.03));
+  border-left: 3px solid #0284c7;
+  color: #0284c7;
+  font-weight: 600;
 }
 
-/* Score Rings */
+/* Score Rings Execution logic */
 @keyframes ring-fill {
   from { stroke-dashoffset: 283; }
   to { stroke-dashoffset: var(--dash); }
 }
 .score-ring { animation: ring-fill 1.5s ease-out forwards; }
 
-/* Pulse dot */
+/* Pulse animation for the Live System Badge */
 @keyframes pulse-ring {
-  0% { transform: scale(0.8); opacity: 1; }
-  100% { transform: scale(2); opacity: 0; }
+  0% { transform: scale(0.8); opacity: 0.8; }
+  100% { transform: scale(2.2); opacity: 0; }
 }
 .pulse-dot::before {
   content: '';
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  animation: pulse-ring 1.5s ease-out infinite;
+  animation: pulse-ring 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   background: currentColor;
-}
+                              }
+             
