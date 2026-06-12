@@ -4,25 +4,18 @@ import { createServerSupabaseClient } from '@/lib/supabase'
 export async function GET(req: NextRequest) {
   try {
     const supabase = createServerSupabaseClient()
-    const { searchParams } = new URL(req.url)
-    const type = searchParams.get('type') || 'contacts'
+    const type = new URL(req.url).searchParams.get('type') || 'contacts'
 
     if (type === 'contacts') {
       const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .order('created_at', { ascending: false })
-
+        .from('contacts').select('*').order('created_at', { ascending: false })
       if (error) throw error
       return NextResponse.json({ success: true, data: data || [] })
     }
 
     if (type === 'deals') {
       const { data, error } = await supabase
-        .from('deals')
-        .select('*, contacts(name, email)')
-        .order('created_at', { ascending: false })
-
+        .from('deals').select('*, contacts(name, email)').order('created_at', { ascending: false })
       if (error) throw error
       return NextResponse.json({ success: true, data: data || [] })
     }
@@ -43,19 +36,12 @@ export async function POST(req: NextRequest) {
       const { data: contact, error } = await supabase
         .from('contacts')
         .insert({
-          name: data.name,
-          email: data.email,
-          phone: data.phone || '',
-          company: data.company,
-          website: data.website || '',
-          status: data.status || data.stage || 'lead',
-          tags: data.tags || [],
-          notes: data.notes || '',
-          value: data.value || 0,
+          name: data.name, email: data.email, phone: data.phone,
+          company: data.company, website: data.website,
+          status: data.status || 'lead', tags: data.tags || [],
+          notes: data.notes || '', value: data.value || 0,
         })
-        .select()
-        .single()
-
+        .select().single()
       if (error) throw error
       return NextResponse.json({ success: true, data: contact })
     }
@@ -64,17 +50,12 @@ export async function POST(req: NextRequest) {
       const { data: deal, error } = await supabase
         .from('deals')
         .insert({
-          title: data.title,
-          contact_id: data.contactId,
-          value: data.value,
-          stage: data.stage || 'prospecting',
+          title: data.title, contact_id: data.contactId,
+          value: data.value, stage: data.stage || 'prospecting',
           probability: data.probability || 20,
-          expected_close: data.expectedClose,
-          notes: data.notes || '',
+          expected_close: data.expectedClose, notes: data.notes || '',
         })
-        .select()
-        .single()
-
+        .select().single()
       if (error) throw error
       return NextResponse.json({ success: true, data: deal })
     }
@@ -88,40 +69,12 @@ export async function POST(req: NextRequest) {
 export async function PUT(req: NextRequest) {
   try {
     const supabase = createServerSupabaseClient()
-    const body = await req.json()
-    const { type, id, ...data } = body
-
-    if (type === 'contact') {
-      // Clean target mapping variables before updating database row directly
-      const updatePayload: any = { ...data }
-      if (data.stage && !data.status) {
-        updatePayload.status = data.stage
-      }
-
-      const { data: updated, error } = await supabase
-        .from('contacts')
-        .update(updatePayload)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return NextResponse.json({ success: true, data: updated })
-    }
-
-    if (type === 'deal') {
-      const { data: updated, error } = await supabase
-        .from('deals')
-        .update(data)
-        .eq('id', id)
-        .select()
-        .single()
-
-      if (error) throw error
-      return NextResponse.json({ success: true, data: updated })
-    }
-
-    return NextResponse.json({ error: 'Invalid type' }, { status: 400 })
+    const { type, id, ...data } = await req.json()
+    const table = type === 'deal' ? 'deals' : 'contacts'
+    const { data: updated, error } = await supabase
+      .from(table).update(data).eq('id', id).select().single()
+    if (error) throw error
+    return NextResponse.json({ success: true, data: updated })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
@@ -133,16 +86,12 @@ export async function DELETE(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const id = searchParams.get('id')
     const type = searchParams.get('type')
-
     if (!id) return NextResponse.json({ error: 'ID required' }, { status: 400 })
-
     const table = type === 'deal' ? 'deals' : 'contacts'
     const { error } = await supabase.from(table).delete().eq('id', id)
-
     if (error) throw error
     return NextResponse.json({ success: true })
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
-    }
-          
+        }
