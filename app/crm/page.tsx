@@ -5,8 +5,8 @@ import Pipeline from '@/components/crm/Pipeline'
 import { Users, Plus, DollarSign, Briefcase, UserPlus } from 'lucide-react'
 
 export default function CrmPage() {
-  // Typescript errors se bachne ke liye explicitly 'any' define kiya gaya hai
-  const { contacts, moveStage, addContact } = useCRM() as any
+  // Client engine integration hook sync completely free of any type casting
+  const { contacts, moveStage, addContact } = useCRM()
   const [showForm, setShowForm] = useState(false)
   
   // New entry local state handlers
@@ -15,17 +15,24 @@ export default function CrmPage() {
   const [email, setEmail] = useState('')
   const [value, setValue] = useState('')
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (name && company && email && value) {
-      // addContact ko call karte waqt bhi safety ke liye any use kiya
-      (addContact as any)({
-        name,
-        company,
-        email,
-        dealValue: Number(value),
-        stage: 'lead'
-      })
+      if (typeof addContact === 'function') {
+        // Safe object injection syncing with database hook payloads schema
+        await addContact({
+          name,
+          company,
+          email,
+          phone: '',
+          website: '',
+          status: 'lead',
+          value: Number(value),
+          tags: [],
+          notes: ''
+        })
+      }
+      
       // Clear forms
       setName('')
       setCompany('')
@@ -100,8 +107,8 @@ export default function CrmPage() {
         </div>
       )}
 
-      {/* Main Kanban Workspace Array - contacts ko yahan bhi safe cast kiya hai */}
-      <Pipeline contacts={(contacts as any) || []} onMoveStage={moveStage as any} />
+      {/* Main Kanban Workspace Array - Cleanly integrated nodes routing */}
+      <Pipeline contacts={contacts || []} onMoveStage={moveStage} />
     </div>
   )
 }
