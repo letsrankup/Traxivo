@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { scrapePage } from '@/lib/scraper'
-import { analyzeWithGemini } from '@/lib/gemini'
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,12 +8,8 @@ export async function POST(req: NextRequest) {
 
     const page = await scrapePage(url)
 
-    // Performance score
-    const perfScore = Math.max(0, Math.min(100,
-      100 - Math.floor(page.loadTime / 50)
-    ))
+    const perfScore = Math.max(0, Math.min(100, 100 - Math.floor(page.loadTime / 50)))
 
-    // SEO score quick calc
     let seoScore = 100
     if (!page.title) seoScore -= 20
     if (!page.description) seoScore -= 15
@@ -22,16 +17,13 @@ export async function POST(req: NextRequest) {
     if (!page.canonical) seoScore -= 10
     if (page.images.some(i => !i.hasAlt)) seoScore -= 10
 
-    // Security check
     const isHttps = page.url.startsWith('https')
-    const hasRobots = page.robots.length > 0
 
-    // Tech stack detection based on rawHtml
     const techStack: string[] = []
     const html = page.rawHtml
     if (html.includes('wp-content')) techStack.push('WordPress')
     if (html.includes('shopify')) techStack.push('Shopify')
-    if (html.includes('next/static') || html.includes('__NEXT_DATA__')) techStack.push('Next.js')
+    if (html.includes('__NEXT_DATA__')) techStack.push('Next.js')
     if (html.includes('react')) techStack.push('React')
     if (html.includes('vue')) techStack.push('Vue.js')
     if (html.includes('bootstrap')) techStack.push('Bootstrap')
@@ -40,8 +32,11 @@ export async function POST(req: NextRequest) {
     if (html.includes('fbq') || html.includes('facebook')) techStack.push('Facebook Pixel')
     if (html.includes('jquery')) techStack.push('jQuery')
     if (html.includes('cloudflare')) techStack.push('Cloudflare')
+    if (html.includes('stripe')) techStack.push('Stripe')
+    if (html.includes('hubspot')) techStack.push('HubSpot')
+    if (html.includes('intercom')) techStack.push('Intercom')
+    if (html.includes('zendesk')) techStack.push('Zendesk')
 
-    // Content analysis
     const contentScore = Math.min(100,
       (page.wordCount > 800 ? 40 : page.wordCount > 300 ? 25 : 10) +
       (page.h1.length === 1 ? 20 : 0) +
@@ -49,33 +44,8 @@ export async function POST(req: NextRequest) {
       (page.images.filter(i => i.hasAlt).length > 0 ? 20 : 0)
     )
 
-    // AI full analysis
-    const aiPrompt = `
-Analyze this website and provide a comprehensive report:
-
-URL: ${page.url}
-Title: ${page.title}
-Description: ${page.description}
-Word Count: ${page.wordCount}
-Load Time: ${(page.loadTime / 1000).toFixed(2)}s
-HTTPS: ${isHttps}
-Technologies: ${techStack.join(', ') || 'Unknown'}
-Internal Links: ${page.internalLinks}
-External Links: ${page.externalLinks}
-Images: ${page.images.length} (${page.images.filter(i => i.hasAlt).length} with alt)
-Schema Types: ${page.schemaTypes.join(', ') || 'None'}
-
-Provide:
-1. Overall website assessment (2-3 sentences)
-2. Top 3 strengths
-3. Top 3 critical improvements needed
-4. Estimated traffic potential
-5. Competitive positioning advice
-
-Be specific and actionable.
-    `
-
-    const aiAnalysis = await analyzeWithGemini(aiPrompt)
+    const securityScore = isHttps ? 90 : 30
+    const overall = Math.round((perfScore + Math.max(0, seoScore) + contentScore + securityScore) / 4)
 
     return NextResponse.json({
       success: true,
@@ -88,15 +58,15 @@ Be specific and actionable.
         loadTimeFormatted: `${(page.loadTime / 1000).toFixed(2)}s`,
         statusCode: page.statusCode,
         isHttps,
-        hasRobots,
+        hasRobots: page.robots.length > 0,
         canonical: page.canonical,
       },
       scores: {
         performance: perfScore,
         seo: Math.max(0, seoScore),
         content: contentScore,
-        security: isHttps ? 90 : 30,
-        overall: Math.round((perfScore + Math.max(0, seoScore) + contentScore + (isHttps ? 90 : 30)) / 4),
+        security: securityScore,
+        overall,
       },
       techStack,
       links: {
@@ -120,12 +90,8 @@ Be specific and actionable.
         ogImage: page.ogImage,
       },
       schema: page.schemaTypes,
-      aiAnalysis,
     })
   } catch (err: any) {
-    return NextResponse.json(
-      { error: err.message || 'Analysis failed' },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: err.message || 'Analysis failed' }, { status: 500 })
   }
-  }
+      }
