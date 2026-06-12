@@ -45,10 +45,10 @@ export async function POST(req: NextRequest) {
         .insert({
           name: data.name,
           email: data.email,
-          phone: data.phone,
+          phone: data.phone || '',
           company: data.company,
-          website: data.website,
-          status: data.status || 'lead',
+          website: data.website || '',
+          status: data.status || data.stage || 'lead',
           tags: data.tags || [],
           notes: data.notes || '',
           value: data.value || 0,
@@ -92,9 +92,15 @@ export async function PUT(req: NextRequest) {
     const { type, id, ...data } = body
 
     if (type === 'contact') {
+      // Clean target mapping variables before updating database row directly
+      const updatePayload: any = { ...data }
+      if (data.stage && !data.status) {
+        updatePayload.status = data.stage
+      }
+
       const { data: updated, error } = await supabase
         .from('contacts')
-        .update(data)
+        .update(updatePayload)
         .eq('id', id)
         .select()
         .single()
@@ -138,4 +144,4 @@ export async function DELETE(req: NextRequest) {
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 })
   }
-        }
+}
