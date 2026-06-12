@@ -8,10 +8,12 @@ export interface Contact {
   phone: string
   company: string
   website: string
-  status: 'lead' | 'prospect' | 'customer' | 'churned'
+  status: 'lead' | 'prospect' | 'customer' | 'churned' | string // Fallback matching string handles added
   tags: string[]
   notes: string
   value: number
+  dealValue?: number // Mapping CRM page data variables safely
+  stage?: string      // Mapping pipeline drag-and-drop safely
   created_at: string
 }
 
@@ -38,26 +40,75 @@ export function useCRM() {
     try {
       const res = await fetch('/api/crm?type=contacts')
       const data = await res.json()
-      if (data.success) setContacts(data.data)
+      if (data.success) {
+        // Data format normalization layer
+        const normalized = (data.data || []).map((c: any) => ({
+          ...c,
+          dealValue: c.dealValue || c.value || 0,
+          stage: c.stage || c.status || 'lead'
+        }))
+        setContacts(normalized)
+      }
+    } catch (e) {
+      console.error(e)
     } finally { setLoading(false) }
   }
 
   const fetchDeals = async () => {
-    const res = await fetch('/api/crm?type=deals')
-    const data = await res.json()
-    if (data.success) setDeals(data.data)
+    try {
+      const res = await fetch('/api/crm?type=deals')
+      const data = await res.json()
+      if (data.success) setDeals(data.data)
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   useEffect(() => { fetchContacts(); fetchDeals() }, [])
 
   const addContact = async (contact: Omit<Contact, 'id' | 'created_at'>) => {
+    // Mapping keys safely between client pages and database endpoints
+    const payload = {
+      type: 'contact',
+      name: contact.name,
+      email: contact.email,
+      phone: contact.phone || '',
+      company: contact.company,
+      website: contact.website || '',
+      status: (contact as any).stage || contact.status || 'lead',
+      value: contact.value || (contact as any).dealValue || 0,
+      tags: contact.tags || [],
+      notes: contact.notes || ''
+    }
+
     const res = await fetch('/api/crm', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'contact', ...contact }),
+      body: JSON.stringify(payload),
     })
     const data = await res.json()
-    if (data.success) { setContacts(prev => [data.data, ...prev]); return data.data }
+    if (data.success) {
+      const savedNode = {
+        ...data.data,
+        dealValue: data.data.value || 0,
+        stage: data.data.status || 'lead'
+      }
+      setContacts(prev => [savedNode, ...prev])
+      return savedNode
+    }
+  }
+
+  // CRM Page dynamically requires a moveStage function for Kanban dragging workflows
+  const moveStage = async (contactId: string, newStage: string) => {
+    // Locally optimistically update state first for high performance speed
+    setContacts(prev => prev.map(c => c.id === contactId ? { ...c, stage: newStage, status: newStage } : c))
+    
+    // Send state mutation down to server core API endpoints
+    await fetch('/api/crm', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'contact', id: contactId, status: newStage, stage: newStage }),
+    })
   }
 
   const updateContact = async (id: string, updates: Partial<Contact>) => {
@@ -67,7 +118,13 @@ export function useCRM() {
       body: JSON.stringify({ type: 'contact', id, ...updates }),
     })
     const data = await res.json()
-    if (data.success) setContacts(prev => prev.map(c => c.id === id ? data.data : c))
+    if (data.success) {
+      setContacts(prev => prev.map(c => c.id === id ? {
+        ...data.data,
+        dealValue: data.data.value || 0,
+        stage: data.data.status || 'lead'
+      } : c))
+    }
   }
 
   const deleteContact = async (id: string) => {
@@ -98,5 +155,19 @@ export function useCRM() {
   const totalPipeline = deals.filter(d => !d.stage.includes('closed')).reduce((s, d) => s + d.value, 0)
   const wonDeals = deals.filter(d => d.stage === 'closed_won').reduce((s, d) => s + d.value, 0)
 
-  return { contacts, deals, loading, addContact, updateContact, deleteContact, addDeal, updateDeal, fetchContacts, fetchDeals, totalPipeline, wonDeals }
-                                                   }
+  return { 
+    contacts, 
+    deals, 
+    loading, 
+    addContact, 
+    moveStage, // Exposed mapping for Kanban UI nodes
+    updateContact, 
+    deleteContact, 
+    addDeal, 
+    updateDeal, 
+    fetchContacts, 
+    fetchDeals, 
+    totalPipeline, 
+    wonDeals 
+  }
+}
