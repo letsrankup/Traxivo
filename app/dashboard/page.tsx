@@ -6,10 +6,10 @@ import RevenueChart from '@/components/dashboard/RevenueChart'
 import ActivityFeed from '@/components/dashboard/ActivityFeed'
 import QuickActions from '@/components/dashboard/QuickActions'
 import { createClient } from '@/lib/supabase'
-import { useCRM } from '@/hooks/useCRM' // Client application hook link
+import { useCRM } from '@/hooks/useCRM' 
 import {
   DollarSign, Users, FileText, TrendingUp,
-  Search, Zap, BarChart3, CheckCircle
+  Search, BarChart3, CheckCircle
 } from 'lucide-react'
 
 interface DashStats {
@@ -24,7 +24,6 @@ interface DashStats {
 }
 
 export default function DashboardPage() {
-  // Sync core application dynamic live states from the state engine hook
   const { contacts: crmContacts, deals: crmDeals, totalPipeline, wonDeals, loading: crmLoading } = useCRM()
 
   const [stats, setStats] = useState<DashStats>({
@@ -52,11 +51,10 @@ export default function DashboardPage() {
           setUserName(user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'there')
         }
 
-        // Fetch remaining secondary dynamic meta models safely if tables exist
         const [invoices, proposals] = await Promise.all([
           supabase.from('invoices').select('id, status, total').then(r => r.data || []),
           supabase.from('proposals').select('id, status').then(r => r.data || []),
-        ]).catch(() => [[], []]) // Fault-tolerance catch boundary to prevent empty dashboard collapse
+        ]).catch(() => [[], []]) 
 
         const totalRevenue = invoices
           .filter((i: any) => i.status === 'paid')
@@ -67,7 +65,7 @@ export default function DashboardPage() {
           : 0
 
         setStats({
-          revenue: totalRevenue || wonDeals || 0, // Fallback chain validation nodes mapping
+          revenue: totalRevenue || wonDeals || 0, 
           contacts: crmContacts.length,
           deals: crmDeals.length,
           proposals: proposals.length,
@@ -84,9 +82,8 @@ export default function DashboardPage() {
     }
 
     loadStats()
-  }, [crmContacts, crmDeals, totalPipeline, wonDeals]) // Depend on sync variables updates loop
+  }, [crmContacts, crmDeals, totalPipeline, wonDeals]) 
 
-  // Combined validation state loader checking
   const isDataLoading = loading || crmLoading
 
   const statsCards = [
@@ -95,7 +92,7 @@ export default function DashboardPage() {
       value: stats.revenue,
       change: 18,
       changeLabel: 'vs last month',
-      icon: <DollarSign className="w-5 h-5" />,
+      icon: <DollarSign className="w-4 h-4" />,
       color: '#10b981',
       prefix: '$',
     },
@@ -104,7 +101,7 @@ export default function DashboardPage() {
       value: stats.contacts,
       change: 12,
       changeLabel: 'vs last month',
-      icon: <Users className="w-5 h-5" />,
+      icon: <Users className="w-4 h-4" />,
       color: '#3b82f6',
     },
     {
@@ -112,7 +109,7 @@ export default function DashboardPage() {
       value: stats.deals,
       change: 8,
       changeLabel: 'vs last month',
-      icon: <TrendingUp className="w-5 h-5" />,
+      icon: <TrendingUp className="w-4 h-4" />,
       color: '#6366f1',
     },
     {
@@ -120,7 +117,7 @@ export default function DashboardPage() {
       value: stats.winRate,
       change: 5,
       changeLabel: 'vs last month',
-      icon: <CheckCircle className="w-5 h-5" />,
+      icon: <CheckCircle className="w-4 h-4" />,
       color: '#f59e0b',
       suffix: '%',
     },
@@ -129,7 +126,7 @@ export default function DashboardPage() {
       value: stats.proposals,
       change: 15,
       changeLabel: 'vs last month',
-      icon: <FileText className="w-5 h-5" />,
+      icon: <FileText className="w-4 h-4" />,
       color: '#a78bfa',
     },
     {
@@ -137,7 +134,7 @@ export default function DashboardPage() {
       value: stats.invoices,
       change: 20,
       changeLabel: 'vs last month',
-      icon: <DollarSign className="w-5 h-5" />,
+      icon: <DollarSign className="w-4 h-4" />,
       color: '#14b8a6',
     },
     {
@@ -145,7 +142,7 @@ export default function DashboardPage() {
       value: stats.audits,
       change: 33,
       changeLabel: 'vs last month',
-      icon: <Search className="w-5 h-5" />,
+      icon: <Search className="w-4 h-4" />,
       color: '#8b5cf6',
     },
     {
@@ -153,7 +150,7 @@ export default function DashboardPage() {
       value: stats.growth,
       change: 5,
       changeLabel: 'vs last month',
-      icon: <BarChart3 className="w-5 h-5" />,
+      icon: <BarChart3 className="w-4 h-4" />,
       color: '#ec4899',
       suffix: '%',
     },
@@ -161,43 +158,50 @@ export default function DashboardPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        {/* Greeting */}
-        <div className="flex items-start justify-between">
+      <div className="w-full max-w-7xl mx-auto px-2 py-4 md:p-6 space-y-6 overflow-x-hidden">
+        
+        {/* Top Header Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-black text-white">
+            <h2 className="text-xl md:text-2xl font-black text-white tracking-tight capitalize">
               {greeting}, {userName}! 👋
             </h2>
-            <p className="text-slate-400 text-sm mt-1">
-              Here's what's happening with your business today.
+            <p className="text-slate-400 text-xs mt-1">
+              Business overview & KPIs dashboard structure.
             </p>
           </div>
-          <div className="hidden md:flex items-center gap-2 glass px-4 py-2 rounded-xl border border-white/5">
+          <div className="flex items-center gap-2 bg-slate-900/60 border border-white/5 px-3 py-1.5 rounded-xl w-fit">
             <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-slate-400 text-xs">All systems operational</span>
+            <span className="text-slate-400 text-[11px] font-medium">All systems operational</span>
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Stats Grid - Fixed Layout Bug */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
           {statsCards.map((card, i) => (
-            <StatsCard key={i} {...card} loading={isDataLoading} index={i} />
+            <div key={i} className="w-full min-w-0">
+              <StatsCard {...card} loading={isDataLoading} index={i} />
+            </div>
           ))}
         </div>
 
-        {/* Charts + Activity Row */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="md:col-span-2">
+        {/* Action Blocks & Charts Grid Wrapper */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start w-full">
+          <div className="lg:col-span-2 w-full min-w-0 bg-slate-950/20 rounded-2xl border border-white/5 p-1">
             <RevenueChart />
           </div>
-          <div>
+          <div className="w-full min-w-0">
             <QuickActions />
           </div>
         </div>
 
-        {/* Activity Feed */}
-        <ActivityFeed />
+        {/* Recent Activity Section */}
+        <div className="w-full bg-slate-950/20 rounded-2xl border border-white/5 p-1">
+          <ActivityFeed />
+        </div>
+
       </div>
     </DashboardLayout>
   )
-              }
+                      }
+      
