@@ -1,6 +1,13 @@
 import type { Metadata } from 'next'
+import { Inter } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'react-hot-toast'
+
+// 💎 Next.js Google Font Configurator
+const inter = Inter({ 
+  subsets: ['latin'],
+  variable: '--font-sans',
+})
 
 export const metadata: Metadata = {
   title: 'Traxivo — Business OS',
@@ -15,18 +22,18 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className="animated-bg min-h-screen text-slate-100 antialiased">
+    <html lang="en" suppressHydrationWarning className="scroll-smooth">
+      <body className={`${inter.className} animated-bg min-h-screen text-slate-900 antialiased`}>
         {children}
         <Toaster
           position="top-right"
           toastOptions={{
             style: {
-              background: '#1e293b',
-              color: '#f1f5f9',
-              border: '1px solid rgba(99,102,241,0.3)',
+              background: '#ffffff',
+              color: '#0f172a',
+              border: '1px solid #e2e8f0',
               borderRadius: '12px',
-              backdropFilter: 'blur(20px)',
+              boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.05)',
             },
             success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
             error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } },
