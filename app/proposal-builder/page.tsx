@@ -1,132 +1,167 @@
 'use client'
-import { useState } from 'react'
-import { FileText, Sparkles, Send, Download, Loader2, CheckCircle2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import DashboardLayout from '@/components/layout/DashboardLayout'
+import { FileText, Plus, Loader2, X, Download, Eye } from 'lucide-react'
+import { formatDate } from '@/lib/utils'
 
-export default function ProposalBuilderPage() {
-  const [clientName, setClientName] = useState('')
-  const [projectScope, setProjectScope] = useState('SEO Optimization & Technical Lead Generation')
-  const [budget, setBudget] = useState('')
+const statusColors: Record<string, string> = {
+  draft: 'bg-gray-100 text-gray-600',
+  sent: 'bg-blue-100 text-blue-600',
+  accepted: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-600',
+}
+
+export default function ProposalsPage() {
+  const [proposals, setProposals] = useState<any[]>([])
   const [loading, setLoading] = useState(false)
-  const [generatedDoc, setGeneratedDoc] = useState<string | null>(null)
+  const [generating, setGenerating] = useState(false)
+  const [showModal, setShowModal] = useState(false)
+  const [preview, setPreview] = useState<any>(null)
+  const [form, setForm] = useState({ clientName: '', service: '', budget: '', timeline: '', needs: '' })
 
-  const handleCreateProposal = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!clientName || !budget) return
-    setLoading(true)
-    
-    setTimeout(() => {
-      setGeneratedDoc(`
-# EXECUTIVE BUSINESS PROPOSAL
-**Prepared For:** ${clientName}
-**Service Architecture:** ${projectScope}
-**Estimated Investment:** $${budget}/month
+  useEffect(() => {
+    fetch('/api/proposals').then(r => r.json()).then(d => {
+      if (d.success) setProposals(d.data)
+    })
+  }, [])
 
-## 1. Tactical Execution Plan
-Our generative engine automation framework will initiate deep crawling checkpoints to discover technical infrastructure defects and harvest organic conversion paths.
+  const generate = async () => {
+    if (!form.clientName || !form.service) return
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/proposals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'generate', ...form }),
+      })
+      const data = await res.json()
+      if (data.success) {
+        setProposals(p => [data.data, ...p])
+        setShowModal(false)
+        setPreview(data.data)
+        setForm({ clientName: '', service: '', budget: '', timeline: '', needs: '' })
+      }
+    } finally { setGenerating(false) }
+  }
 
-## 2. Deliverables Stack
-* Weekly algorithmic ranking surveillance grids.
-* Cleansed B2B outreach profile maps with custom pipeline matching.
-* Dynamic ledger invoicing dashboards for client accountability.
-      `)
-      setLoading(false)
-    }, 1500)
+  const updateStatus = async (id: string, status: string) => {
+    await fetch('/api/proposals', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, status }),
+    })
+    setProposals(p => p.map(pr => pr.id === id ? { ...pr, status } : pr))
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4 md:p-6">
-      <div>
-        <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">Proposal & Pitch Builder</h1>
-        <p className="text-slate-400 text-xs mt-1">Generate structural project agreements, high-intent client onboarding contracts, and commercial scopes.</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Left Input Settings */}
-        <div className="glass border border-white/5 rounded-2xl p-5 space-y-4 h-fit">
-          <h3 className="text-white font-semibold text-xs uppercase tracking-wider">Proposal Configurator</h3>
-          <form onSubmit={handleCreateProposal} className="space-y-3">
-            <div>
-              <label className="text-slate-500 text-[10px] uppercase font-bold tracking-wider block mb-1">Prospect Entity</label>
-              <input
-                type="text"
-                required
-                placeholder="Client or Corporate Name..."
-                value={clientName}
-                onChange={(e) => setClientName(e.target.value)}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <div>
-              <label className="text-slate-500 text-[10px] uppercase font-bold tracking-wider block mb-1">Project Scope</label>
-              <select
-                value={projectScope}
-                onChange={(e) => setProjectScope(e.target.value)}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-indigo-500"
-              >
-                <option value="SEO Optimization & Technical Lead Generation">Full SEO Suite & Lead Scraper</option>
-                <option value="Custom CRM Infrastructure Setup">Dedicated CRM Architecture</option>
-                <option value="Full Stack Operations Management">Monthly Performance Maintenance</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="text-slate-500 text-[10px] uppercase font-bold tracking-wider block mb-1">Target Budget Valuation ($)</label>
-              <input
-                type="number"
-                required
-                placeholder="e.g., 1500"
-                value={budget}
-                onChange={(e) => setBudget(e.target.value)}
-                className="w-full bg-slate-900 border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white font-bold text-xs py-2.5 rounded-xl transition-all flex items-center justify-center gap-1.5"
-            >
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
-              Generate Custom Proposal
-            </button>
-          </form>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Proposals</h1>
+            <p className="text-gray-500 text-sm mt-0.5">Create and manage client proposals</p>
+          </div>
+          <button onClick={() => setShowModal(true)}
+            className="gradient-brand text-white px-4 py-2 rounded-xl font-semibold text-sm shadow-purple hover:opacity-90 transition flex items-center gap-2">
+            <Plus size={16} /> New Proposal
+          </button>
         </div>
 
-        {/* Right Output Manifest Document */}
-        <div className="md:col-span-2">
-          {loading ? (
-            <div className="text-center py-24 glass border border-white/5 rounded-2xl h-full flex flex-col justify-center items-center">
-              <Loader2 className="w-6 h-6 text-indigo-500 animate-spin mb-2" />
-              <p className="text-xs text-slate-400">Assembling enterprise contract templates...</p>
+        {/* Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          {['draft', 'sent', 'accepted', 'rejected'].map(s => (
+            <div key={s} className="bg-white rounded-2xl border border-gray-100 shadow-card p-4 text-center">
+              <div className="text-2xl font-bold text-gray-900">{proposals.filter(p => p.status === s).length}</div>
+              <div className={`text-xs font-medium mt-1 px-2 py-0.5 rounded-lg inline-block capitalize ${statusColors[s]}`}>{s}</div>
             </div>
-          ) : generatedDoc ? (
-            <div className="glass border border-white/5 rounded-2xl p-6 space-y-4 text-left animate-fadeIn">
-              <div className="flex items-center justify-between pb-3 border-b border-white/5">
-                <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider flex items-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Proposal Engine Compiling Complete
-                </span>
-                <button 
-                  onClick={() => alert("Simulation download active. PDF stream generation simulated.")}
-                  className="bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[11px] font-semibold px-2.5 py-1 rounded-lg flex items-center gap-1 transition-all"
-                >
-                  <Download className="w-3 h-3" /> Export Draft
-                </button>
-              </div>
-              <div className="bg-slate-950/60 border border-white/3 rounded-xl p-4 font-mono text-xs text-slate-300 leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-y-auto">
-                {generatedDoc}
-              </div>
+          ))}
+        </div>
+
+        {/* List */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-card overflow-hidden">
+          {proposals.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <FileText size={40} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">No proposals yet. Create your first one!</p>
             </div>
           ) : (
-            <div className="text-center py-20 border border-dashed border-white/5 rounded-2xl h-full flex flex-col justify-center items-center">
-              <FileText className="w-6 h-6 text-slate-600 mb-2 opacity-50" />
-              <p className="text-slate-400 text-xs">No active documents drafted</p>
-              <p className="text-slate-600 text-[11px] mt-0.5">Use the configuration parameters block to assemble a technical business pitch layout.</p>
+            <div className="divide-y divide-gray-50">
+              {proposals.map(p => (
+                <div key={p.id} className="flex items-center gap-4 px-5 py-4 hover:bg-gray-50 transition">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
+                    <FileText size={18} className="text-purple-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-gray-800 text-sm truncate">{p.title}</div>
+                    <div className="text-xs text-gray-400">{p.client_name} · {p.service} · {formatDate(p.created_at)}</div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <select value={p.status} onChange={e => updateStatus(p.id, e.target.value)}
+                      className={`text-xs font-medium px-2 py-1 rounded-lg border-0 cursor-pointer ${statusColors[p.status]}`}>
+                      {['draft', 'sent', 'accepted', 'rejected'].map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                    <button onClick={() => setPreview(p)} className="text-gray-400 hover:text-purple-600 transition p-1">
+                      <Eye size={16} />
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
       </div>
-    </div>
+
+      {/* Create Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-5">
+              <h2 className="font-bold text-gray-900">New Proposal</h2>
+              <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <div className="space-y-3">
+              {[
+                ['clientName', 'Client Name *', 'text'],
+                ['service', 'Service/Project *', 'text'],
+                ['budget', 'Budget (e.g. $5,000)', 'text'],
+                ['timeline', 'Timeline (e.g. 4 weeks)', 'text'],
+              ].map(([k, l, t]) => (
+                <input key={k} type={t} placeholder={l} value={form[k as keyof typeof form]}
+                  onChange={e => setForm(p => ({ ...p, [k]: e.target.value }))}
+                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent" />
+              ))}
+              <textarea placeholder="Client needs / project description" value={form.needs}
+                onChange={e => setForm(p => ({ ...p, needs: e.target.value }))} rows={3}
+                className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent resize-none" />
+            </div>
+            <div className="flex gap-3 mt-5">
+              <button onClick={() => setShowModal(false)}
+                className="flex-1 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50">
+                Cancel
+              </button>
+              <button onClick={generate} disabled={generating}
+                className="flex-1 gradient-brand text-white py-2.5 rounded-xl text-sm font-semibold shadow-purple hover:opacity-90 transition disabled:opacity-60 flex items-center justify-center gap-2">
+                {generating ? <><Loader2 size={14} className="animate-spin" /> Generating...</> : 'Generate'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Preview Modal */}
+      {preview && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <h2 className="font-bold text-gray-900">{preview.title}</h2>
+              <button onClick={() => setPreview(null)} className="text-gray-400 hover:text-gray-600"><X size={20} /></button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-5">
+              <div className="prose prose-sm max-w-none text-gray-700 whitespace-pre-wrap">{preview.content}</div>
+            </div>
+          </div>
+        </div>
+      )}
+    </DashboardLayout>
   )
-  }
-        
+                                                                                                     }
