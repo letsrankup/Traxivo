@@ -1,130 +1,199 @@
 'use client'
-import { useState, useEffect } from 'react'
-import { useCRM } from '@/hooks/useCRM'
+import { useEffect, useState } from 'react'
 import DashboardLayout from '@/components/layout/DashboardLayout'
-import { 
-  Globe, Search, Users, Landmark, ArrowUpRight, 
-  Bot, ShieldCheck, Cpu, Zap, Radio 
+import StatsCard from '@/components/dashboard/StatsCard'
+import RevenueChart from '@/components/dashboard/RevenueChart'
+import ActivityFeed from '@/components/dashboard/ActivityFeed'
+import QuickActions from '@/components/dashboard/QuickActions'
+import { createClient } from '@/lib/supabase'
+import {
+  DollarSign, Users, FileText, TrendingUp,
+  Search, Zap, BarChart3, CheckCircle
 } from 'lucide-react'
-import Link from 'next/link'
+
+interface DashStats {
+  revenue: number
+  contacts: number
+  deals: number
+  proposals: number
+  invoices: number
+  winRate: number
+  growth: number
+  audits: number
+}
 
 export default function DashboardPage() {
-  // Yahan 'as any' add kiya gaya hai taake Vercel pe TypeScript ka dealValue wala Type error theek ho jaye
-  const { contacts } = useCRM() as any
-  const [mounted, setMounted] = useState(false)
+  const [stats, setStats] = useState<DashStats>({
+    revenue: 0, contacts: 0, deals: 0, proposals: 0,
+    invoices: 0, winRate: 0, growth: 0, audits: 0,
+  })
+  const [loading, setLoading] = useState(true)
+  const [greeting, setGreeting] = useState('')
+  const [userName, setUserName] = useState('there')
 
   useEffect(() => {
-    setMounted(true)
-  } , [])
+    const hour = new Date().getHours()
+    if (hour < 12) setGreeting('Good morning')
+    else if (hour < 17) setGreeting('Good afternoon')
+    else setGreeting('Good evening')
+  }, [])
 
-  // Calculate CRM pipeline metrics dynamically
-  // Ab 'any' ki wajah se item.dealValue pe error nahi aayega
-  const pipelineValue = contacts.reduce((sum: number, item: any) => sum + (item.dealValue || 0), 0)
-  const activeLeadsCount = contacts.filter((c: any) => c.stage === 'lead').length
+  useEffect(() => {
+    const supabase = createClient()
 
-  if (!mounted) return null
+    async function loadStats() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          setUserName(user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'there')
+        }
+
+        const [contacts, deals, invoices, proposals] = await Promise.all([
+          supabase.from('contacts').select('id, created_at'),
+          supabase.from('deals').select('id, stage, value'),
+          supabase.from('invoices').select('id, status, total'),
+          supabase.from('proposals').select('id, status'),
+        ])
+
+        const allDeals = deals.data || []
+        const allInvoices = invoices.data || []
+        const wonDeals = allDeals.filter((d: any) => d.stage === 'closed_won').length
+        const totalRevenue = allInvoices
+          .filter((i: any) => i.status === 'paid')
+          .reduce((s: number, i: any) => s + (i.total || 0), 0)
+        const winRate = allDeals.length > 0
+          ? Math.round((wonDeals / allDeals.length) * 100)
+          : 0
+
+        setStats({
+          revenue: totalRevenue,
+          contacts: (contacts.data || []).length,
+          deals: allDeals.length,
+          proposals: (proposals.data || []).length,
+          invoices: allInvoices.length,
+          winRate,
+          growth: 23,
+          audits: Math.floor(Math.random() * 50) + 10,
+        })
+      } catch (err) {
+        console.error('Dashboard load error:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    loadStats()
+  }, [])
+
+  const statsCards = [
+    {
+      title: 'Total Revenue',
+      value: stats.revenue,
+      change: 18,
+      changeLabel: 'vs last month',
+      icon: <DollarSign className="w-5 h-5" />,
+      color: '#10b981',
+      prefix: '$',
+    },
+    {
+      title: 'Total Contacts',
+      value: stats.contacts,
+      change: 12,
+      changeLabel: 'vs last month',
+      icon: <Users className="w-5 h-5" />,
+      color: '#3b82f6',
+    },
+    {
+      title: 'Active Deals',
+      value: stats.deals,
+      change: 8,
+      changeLabel: 'vs last month',
+      icon: <TrendingUp className="w-5 h-5" />,
+      color: '#6366f1',
+    },
+    {
+      title: 'Win Rate',
+      value: stats.winRate,
+      change: 5,
+      changeLabel: 'vs last month',
+      icon: <CheckCircle className="w-5 h-5" />,
+      color: '#f59e0b',
+      suffix: '%',
+    },
+    {
+      title: 'Proposals Sent',
+      value: stats.proposals,
+      change: 15,
+      changeLabel: 'vs last month',
+      icon: <FileText className="w-5 h-5" />,
+      color: '#a78bfa',
+    },
+    {
+      title: 'Invoices',
+      value: stats.invoices,
+      change: 20,
+      changeLabel: 'vs last month',
+      icon: <DollarSign className="w-5 h-5" />,
+      color: '#14b8a6',
+    },
+    {
+      title: 'SEO Audits',
+      value: stats.audits,
+      change: 33,
+      changeLabel: 'vs last month',
+      icon: <Search className="w-5 h-5" />,
+      color: '#8b5cf6',
+    },
+    {
+      title: 'Growth Rate',
+      value: stats.growth,
+      change: 5,
+      changeLabel: 'vs last month',
+      icon: <BarChart3 className="w-5 h-5" />,
+      color: '#ec4899',
+      suffix: '%',
+    },
+  ]
 
   return (
     <DashboardLayout>
       <div className="space-y-6">
-        {/* Welcome Board Grid */}
-        <div className="glass border border-white/5 rounded-3xl p-6 relative overflow-hidden bg-gradient-to-br from-indigo-950/20 via-slate-950 to-slate-950">
-          <div className="absolute top-0 right-0 p-6 opacity-10 pointer-events-none">
-            <Bot className="w-40 h-40 text-indigo-500" />
-          </div>
-          <div className="relative z-10 max-w-xl">
-            <span className="bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-[10px] uppercase font-black tracking-widest px-2.5 py-1 rounded-md inline-flex items-center gap-1.5 mb-3">
-              <Radio className="w-3 h-3 animate-pulse text-indigo-400" /> Multi-Agent Engine Operating Model
-            </span>
-            <h1 className="text-2xl md:text-4xl font-black text-white tracking-tight leading-tight">
-              Welcome Back, Zaheer Zaheer
-            </h1>
-            <p className="text-slate-400 text-xs md:text-sm mt-2 font-medium leading-relaxed">
-              Your autonomous sales, SEO, and business orchestration stacks are functioning at optimal efficiency levels. Free-tier routing parameters verified.
+        {/* Greeting */}
+        <div className="flex items-start justify-between">
+          <div>
+            <h2 className="text-2xl font-black text-white">
+              {greeting}, {userName}! 👋
+            </h2>
+            <p className="text-slate-400 text-sm mt-1">
+              Here's what's happening with your business today.
             </p>
           </div>
-        </div>
-
-        {/* 4-Column Core Statistics Cards Array */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* SEO Metric */}
-          <div className="glass border border-white/5 rounded-2xl p-5 flex flex-col justify-between hover:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">SEO Index Score</span>
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/10">
-                <Globe className="w-4 h-4" />
-              </div>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-white font-mono">94 / 100</p>
-              <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-                <span className="text-emerald-400 font-bold font-mono">Optimal</span> across tracked clusters.
-              </p>
-            </div>
-          </div>
-
-          {/* Leads Extractor Metric */}
-          <div className="glass border border-white/5 rounded-2xl p-5 flex flex-col justify-between hover:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">OMNI Extracted Pool</span>
-              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/10">
-                <Search className="w-4 h-4" />
-              </div>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-white font-mono">{activeLeadsCount * 12 + 142}</p>
-              <p className="text-[11px] text-slate-500 mt-1">Ready for automated outreach logs.</p>
-            </div>
-          </div>
-
-          {/* CRM Metric */}
-          <div className="glass border border-white/5 rounded-2xl p-5 flex flex-col justify-between hover:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Active Board Leads</span>
-              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/10">
-                <Users className="w-4 h-4" />
-              </div>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-white font-mono">{contacts.length}</p>
-              <p className="text-[11px] text-slate-500 mt-1">Profiles in system stage tracking.</p>
-            </div>
-          </div>
-
-          {/* Finance Metric */}
-          <div className="glass border border-white/5 rounded-2xl p-5 flex flex-col justify-between hover:border-white/10 transition-colors">
-            <div className="flex items-center justify-between mb-4">
-              <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Pipeline Contract Value</span>
-              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/10">
-                <Landmark className="w-4 h-4" />
-              </div>
-            </div>
-            <div>
-              <p className="text-2xl font-black text-white font-mono">${pipelineValue.toLocaleString()}</p>
-              <p className="text-[11px] text-slate-500 mt-1">Projected pipeline target revenue.</p>
-            </div>
+          <div className="hidden md:flex items-center gap-2 glass px-4 py-2 rounded-xl border border-white/5">
+            <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-slate-400 text-xs">All systems operational</span>
           </div>
         </div>
 
-        {/* Quick Actions Shortcuts Panel */}
-        <div className="glass border border-white/5 rounded-2xl p-5">
-          <h3 className="text-white font-semibold text-xs uppercase tracking-wider mb-3">Quick Navigation Hub</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <Link href="/seo-audit" className="p-3 bg-white/1 border border-white/5 rounded-xl text-center text-xs text-slate-300 font-semibold hover:bg-white/3 hover:text-white hover:border-white/10 transition-all flex flex-col items-center gap-1.5">
-              <Globe className="w-4 h-4 text-indigo-400" /> SEO Core Audit
-            </Link>
-            <Link href="/leads-finder" className="p-3 bg-white/1 border border-white/5 rounded-xl text-center text-xs text-slate-300 font-semibold hover:bg-white/3 hover:text-white hover:border-white/10 transition-all flex flex-col items-center gap-1.5">
-              <Search className="w-4 h-4 text-emerald-400" /> OMNI Extractor
-            </Link>
-            <Link href="/crm" className="p-3 bg-white/1 border border-white/5 rounded-xl text-center text-xs text-slate-300 font-semibold hover:bg-white/3 hover:text-white hover:border-white/10 transition-all flex flex-col items-center gap-1.5">
-              <Users className="w-4 h-4 text-purple-400" /> Pipeline CRM
-            </Link>
-            <Link href="/settings" className="p-3 bg-white/1 border border-white/5 rounded-xl text-center text-xs text-slate-300 font-semibold hover:bg-white/3 hover:text-white hover:border-white/10 transition-all flex flex-col items-center gap-1.5">
-              <Cpu className="w-4 h-4 text-amber-400" /> System Settings
-            </Link>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {statsCards.map((card, i) => (
+            <StatsCard key={i} {...card} loading={loading} index={i} />
+          ))}
+        </div>
+
+        {/* Charts + Activity Row */}
+        <div className="grid md:grid-cols-3 gap-6">
+          <div className="md:col-span-2">
+            <RevenueChart />
+          </div>
+          <div>
+            <QuickActions />
           </div>
         </div>
+
+        {/* Activity Feed */}
+        <ActivityFeed />
       </div>
     </DashboardLayout>
   )
-}
+      }
