@@ -1,83 +1,107 @@
 'use client'
-import { useState } from 'react'
-import { BarChart3, CloudLightning, ShieldAlert, CheckCircle, RefreshCcw } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import DashboardLayout from '@/components/layout/DashboardLayout'
+import { BarChart2, TrendingUp, DollarSign, Users, Download } from 'lucide-react'
+import { formatCurrency } from '@/lib/utils'
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 export default function ReportsPage() {
-  const [syncing, setSyncing] = useState(false)
+  const [data, setData] = useState<any>(null)
+  const [range, setRange] = useState('30d')
+  const [loading, setLoading] = useState(false)
 
-  const handleSystemSync = () => {
-    setSyncing(true)
-    setTimeout(() => setSyncing(false), 1200)
+  useEffect(() => { loadReport() }, [range])
+
+  const loadReport = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'overview', dateRange: range }),
+      })
+      const d = await res.json()
+      if (d.success) setData(d)
+    } finally { setLoading(false) }
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto p-4 md:p-6">
-      {/* Title Header */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-black text-white tracking-tight">System Performance Reports</h1>
-          <p className="text-slate-400 text-xs mt-1">Consolidated operational summaries, automated cron telemetry logs, and tracking metrics summaries.</p>
+    <DashboardLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Reports</h1>
+            <p className="text-gray-500 text-sm mt-0.5">Business performance insights</p>
+          </div>
+          <div className="flex gap-2">
+            {['7d', '30d', '90d'].map(r => (
+              <button key={r} onClick={() => setRange(r)}
+                className={`px-4 py-2 rounded-xl text-sm font-medium transition ${range === r ? 'gradient-brand text-white shadow-purple' : 'bg-white border border-gray-200 text-gray-600 hover:border-purple-300'}`}>
+                {r}
+              </button>
+            ))}
+          </div>
         </div>
-        <button
-          onClick={handleSystemSync}
-          disabled={syncing}
-          className="bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all flex items-center gap-1.5 flex-shrink-0"
-        >
-          <RefreshCcw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-          {syncing ? 'Syncing...' : 'Sync Diagnostics'}
-        </button>
+
+        {loading ? (
+          <div className="text-center py-16 text-gray-400 text-sm">Loading report...</div>
+        ) : data ? (
+          <div className="space-y-4">
+            {/* KPI Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { icon: DollarSign, label: 'Total Revenue', value: formatCurrency(data.totalRevenue || 0), color: 'text-green-600 bg-green-50' },
+                { icon: TrendingUp, label: 'Pending Revenue', value: formatCurrency(data.pendingRevenue || 0), color: 'text-blue-600 bg-blue-50' },
+                { icon: Users, label: 'Total Contacts', value: data.totalContacts || 0, color: 'text-purple-600 bg-purple-50' },
+                { icon: BarChart2, label: 'Win Rate', value: `${data.winRate || 0}%`, color: 'text-orange-600 bg-orange-50' },
+              ].map(s => (
+                <div key={s.label} className="bg-white rounded-2xl border border-gray-100 shadow-card p-5 flex items-center gap-3">
+                  <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${s.color}`}>
+                    <s.icon size={20} />
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500">{s.label}</div>
+                    <div className="text-xl font-bold text-gray-900">{s.value}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Charts */}
+            {data.monthlyRevenue?.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-6">
+                <h2 className="font-semibold text-gray-900 mb-4">Revenue Trend</h2>
+                <ResponsiveContainer width="100%" height={220}>
+                  <LineChart data={data.monthlyRevenue}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                    <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#9ca3af' }} />
+                    <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
+                    <Tooltip formatter={(v: any) => formatCurrency(v)} contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '12px' }} />
+                    <Line type="monotone" dataKey="revenue" stroke="#9333ea" strokeWidth={2.5} dot={{ fill: '#9333ea', r: 4 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {data.dealsByStage?.length > 0 && (
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-card p-6">
+                <h2 className="font-semibold text-gray-900 mb-4">Deals by Stage</h2>
+                <ResponsiveContainer width="100%" height={220}>
+                  <BarChart data={data.dealsByStage}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
+                    <XAxis dataKey="stage" tick={{ fontSize: 11, fill: '#9ca3af' }} />
+                    <YAxis tick={{ fontSize: 11, fill: '#9ca3af' }} />
+                    <Tooltip contentStyle={{ borderRadius: '12px', border: '1px solid #e5e7eb', fontSize: '12px' }} />
+                    <Bar dataKey="count" fill="#9333ea" radius={[6, 6, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-center py-16 text-gray-400 text-sm">No data available</div>
+        )}
       </div>
-
-      {/* Main Analysis Cards Matrix */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="glass border border-white/5 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">API Router Load</span>
-            <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">Optimal</span>
-          </div>
-          <p className="text-xl font-black text-white font-mono">100% Free Tier Stable</p>
-          <p className="text-[11px] text-slate-500 mt-1">OpenRouter decentralization mapping handles payload spikes effortlessly.</p>
-        </div>
-
-        <div className="glass border border-white/5 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Cron Job Schedules</span>
-            <span className="text-xs text-indigo-400 font-bold bg-indigo-500/10 px-2 py-0.5 rounded">Active</span>
-          </div>
-          <p className="text-xl font-black text-white font-mono">0 Failed Events</p>
-          <p className="text-[11px] text-slate-500 mt-1">Automated maps extraction queues running perfectly on edge runtimes.</p>
-        </div>
-
-        <div className="glass border border-white/5 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Database Security</span>
-            <span className="text-xs text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded">Secured</span>
-          </div>
-          <p className="text-xl font-black text-white font-mono">SSL Gateway Live</p>
-          <p className="text-[11px] text-slate-500 mt-1">Row Level Security (RLS) layers patrolling data processing protocols.</p>
-        </div>
-      </div>
-
-      {/* Operational Logs Stream */}
-      <div className="glass border border-white/5 rounded-2xl p-5 text-left">
-        <h3 className="text-white font-semibold text-sm mb-3 flex items-center gap-2">
-          <CloudLightning className="w-4 h-4 text-indigo-400" /> Infrastructure Activity Logs
-        </h3>
-        <div className="space-y-2 font-mono text-[11px]">
-          <div className="p-2.5 bg-slate-950/40 rounded-xl border border-white/3 text-slate-400 flex items-center justify-between">
-            <span>[LOG-09:42] SYSTEM CORE INITIALIZED: Next.js Vercel Edge Environment booted.</span>
-            <span className="text-emerald-400">[OK]</span>
-          </div>
-          <div className="p-2.5 bg-slate-950/40 rounded-xl border border-white/3 text-slate-400 flex items-center justify-between">
-            <span>[LOG-11:15] ROUTER HOOK: Decentralized OpenRouter routing engine handshakes verified.</span>
-            <span className="text-emerald-400">[OK]</span>
-          </div>
-          <div className="p-2.5 bg-slate-950/40 rounded-xl border border-white/3 text-slate-400 flex items-center justify-between">
-            <span>[LOG-14:02] LOCAL CACHE SYNC: Client components successfully synchronized state store memory.</span>
-            <span className="text-emerald-400">[OK]</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    </DashboardLayout>
   )
-      }
+}
