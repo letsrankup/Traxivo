@@ -6,6 +6,7 @@ import RevenueChart from '@/components/dashboard/RevenueChart'
 import ActivityFeed from '@/components/dashboard/ActivityFeed'
 import QuickActions from '@/components/dashboard/QuickActions'
 import { createClient } from '@/lib/supabase'
+import { useCRM } from '@/hooks/useCRM' // Client application hook link
 import {
   DollarSign, Users, FileText, TrendingUp,
   Search, Zap, BarChart3, CheckCircle
@@ -23,6 +24,9 @@ interface DashStats {
 }
 
 export default function DashboardPage() {
+  // Sync core application dynamic live states from the state engine hook
+  const { contacts: crmContacts, deals: crmDeals, totalPipeline, wonDeals, loading: crmLoading } = useCRM()
+
   const [stats, setStats] = useState<DashStats>({
     revenue: 0, contacts: 0, deals: 0, proposals: 0,
     invoices: 0, winRate: 0, growth: 0, audits: 0,
@@ -48,30 +52,27 @@ export default function DashboardPage() {
           setUserName(user.user_metadata?.full_name?.split(' ')[0] || user.email?.split('@')[0] || 'there')
         }
 
-        const [contacts, deals, invoices, proposals] = await Promise.all([
-          supabase.from('contacts').select('id, created_at'),
-          supabase.from('deals').select('id, stage, value'),
-          supabase.from('invoices').select('id, status, total'),
-          supabase.from('proposals').select('id, status'),
-        ])
+        // Fetch remaining secondary dynamic meta models safely if tables exist
+        const [invoices, proposals] = await Promise.all([
+          supabase.from('invoices').select('id, status, total').then(r => r.data || []),
+          supabase.from('proposals').select('id, status').then(r => r.data || []),
+        ]).catch(() => [[], []]) // Fault-tolerance catch boundary to prevent empty dashboard collapse
 
-        const allDeals = deals.data || []
-        const allInvoices = invoices.data || []
-        const wonDeals = allDeals.filter((d: any) => d.stage === 'closed_won').length
-        const totalRevenue = allInvoices
+        const totalRevenue = invoices
           .filter((i: any) => i.status === 'paid')
-          .reduce((s: number, i: any) => s + (i.total || 0), 0)
-        const winRate = allDeals.length > 0
-          ? Math.round((wonDeals / allDeals.length) * 100)
+          .reduce((s: number, i: any) => s + (Number(i.total) || 0), 0)
+
+        const winRate = crmDeals.length > 0
+          ? Math.round((crmDeals.filter((d: any) => d.stage === 'closed_won').length / crmDeals.length) * 100)
           : 0
 
         setStats({
-          revenue: totalRevenue,
-          contacts: (contacts.data || []).length,
-          deals: allDeals.length,
-          proposals: (proposals.data || []).length,
-          invoices: allInvoices.length,
-          winRate,
+          revenue: totalRevenue || wonDeals || 0, // Fallback chain validation nodes mapping
+          contacts: crmContacts.length,
+          deals: crmDeals.length,
+          proposals: proposals.length,
+          invoices: invoices.length,
+          winRate: winRate || 0,
           growth: 23,
           audits: Math.floor(Math.random() * 50) + 10,
         })
@@ -83,7 +84,10 @@ export default function DashboardPage() {
     }
 
     loadStats()
-  }, [])
+  }, [crmContacts, crmDeals, totalPipeline, wonDeals]) // Depend on sync variables updates loop
+
+  // Combined validation state loader checking
+  const isDataLoading = loading || crmLoading
 
   const statsCards = [
     {
@@ -177,7 +181,7 @@ export default function DashboardPage() {
         {/* Stats Grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {statsCards.map((card, i) => (
-            <StatsCard key={i} {...card} loading={loading} index={i} />
+            <StatsCard key={i} {...card} loading={isDataLoading} index={i} />
           ))}
         </div>
 
@@ -196,4 +200,4 @@ export default function DashboardPage() {
       </div>
     </DashboardLayout>
   )
-      }
+              }
